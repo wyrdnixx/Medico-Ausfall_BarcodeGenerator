@@ -1,0 +1,13 @@
+{
+  "offlinedokuPath": "files/OFFLINEDOKU",
+  "barcodeType": "CODE_128",
+  "barcodeWidth": 200,
+  "barcodeHeight": 50,
+  "pageSize": "A4",
+  "barcodesPerPage": 24,
+  "marginLeft": 20,
+  "marginTop": 20,
+  "marginRight": 20,
+  "marginBottom": 20,
+  "barcodeOutputFilename": "Barcodes.pdf"
+}
