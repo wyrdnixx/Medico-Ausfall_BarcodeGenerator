@@ -9,4 +9,4 @@ if [[ ! -x "$JAVA_EXE" ]]; then
     exit 1
 fi
 
-exec "$JAVA_EXE" -cp "$CP" Medico-Ausfall_BarcodeGenerator "$@"
+exec "$JAVA_EXE" -cp "$CP" Medico_Ausfall_BarcodeGenerator "$@"

@@ -11,5 +11,5 @@ if not exist "%JAVA_EXE%" (
     exit /b 1
 )
 
-"%JAVA_EXE%" -cp "%CP%" Medico-Ausfall_BarcodeGenerator %*
+"%JAVA_EXE%" -cp "%CP%" Medico_Ausfall_BarcodeGenerator %*
 pause

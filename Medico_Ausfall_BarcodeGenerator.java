@@ -19,7 +19,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class BarcodeGenerator {
+public class Medico_Ausfall_BarcodeGenerator {
 
     /** Pattern: segment that is only digits, 6–12 chars (person ID in filenames). */
     private static final Pattern PERSON_ID_PATTERN = Pattern.compile("-([0-9]{6,12})(?:-|$)");
