@@ -48,10 +48,17 @@ public class Medico_Ausfall_BarcodeGenerator {
             int height = config.optInt("barcodeHeight", 50);
             String pageSize = config.optString("pageSize", "A4");
             int perPage = config.optInt("barcodesPerPage", 8);
+            int columns = config.optInt("columns", 0);
+            int rows = config.optInt("rows", 0);
+            if (columns > 0 && rows > 0) {
+                perPage = columns * rows;
+            }
             float marginLeft = (float) config.optDouble("marginLeft", 20);
             float marginTop = (float) config.optDouble("marginTop", 20);
             float marginRight = (float) config.optDouble("marginRight", 20);
             float marginBottom = (float) config.optDouble("marginBottom", 20);
+            float labelWidth = (float) config.optDouble("labelWidth", 0);
+            float labelHeight = (float) config.optDouble("labelHeight", 0);
             String barcodeOutputFilename = config.optString("barcodeOutputFilename", "Barcodes.pdf");
 
             Map<Path, String> folderToPersonId = scanPdfFolders(basePath);
@@ -64,10 +71,16 @@ public class Medico_Ausfall_BarcodeGenerator {
                 Path folder = e.getKey();
                 String personId = e.getValue();
                 String personFolderName = folder.getFileName() != null ? folder.getFileName().toString() : personId;
+                String stationName = "";
+                Path parent = folder.getParent();
+                if (parent != null && parent.getFileName() != null) {
+                    stationName = parent.getFileName().toString();
+                }
                 Path outputPdf = folder.resolve(barcodeOutputFilename);
                 System.out.println("Generating " + outputPdf + " (" + personId + ", " + perPage + " barcodes)");
-                generateBarcodePDF(personFolderName, personId, barcodeType, width, height, pageSize, perPage,
-                        marginLeft, marginTop, marginRight, marginBottom, outputPdf);
+                generateBarcodePDF(personFolderName, stationName, personId, barcodeType, width, height, pageSize,
+                        perPage, columns, rows, marginLeft, marginTop, marginRight, marginBottom,
+                        labelWidth, labelHeight, outputPdf);
             }
             System.out.println("Done. Generated " + folderToPersonId.size() + " Barcodes.pdf file(s).");
         } catch (Exception e) {
@@ -113,26 +126,22 @@ public class Medico_Ausfall_BarcodeGenerator {
         return m.find() ? m.group(1) : null;
     }
 
-    private static void generateBarcodePDF(String personFolderName, String number, String type, int width, int height,
-            String pageSize, int perPage, float marginLeft, float marginTop, float marginRight, float marginBottom,
-            Path outputPath) throws Exception {
+    private static void generateBarcodePDF(String personFolderName, String stationName, String number, String type,
+            int width, int height, String pageSize, int perPage, int columns, int rows,
+            float marginLeft, float marginTop, float marginRight, float marginBottom,
+            float labelWidth, float labelHeight, Path outputPath) throws Exception {
         Rectangle pageRect = PageSize.getRectangle(pageSize);
         Document document = new Document(pageRect, marginLeft, marginRight, marginTop, marginBottom);
         try (OutputStream out = Files.newOutputStream(outputPath)) {
             PdfWriter.getInstance(document, out);
             document.open();
 
-            // Person folder name at the top
-            Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
-            Paragraph title = new Paragraph(personFolderName, titleFont);
-            title.setAlignment(Element.ALIGN_CENTER);
-            title.setSpacingAfter(12);
-            document.add(title);
-
-            int cols = (int) Math.ceil(Math.sqrt(perPage));
-            int rows = (int) Math.ceil((double) perPage / cols);
+            int cols = columns > 0 ? columns : (int) Math.ceil(Math.sqrt(perPage));
+            int effectiveRows = rows > 0 ? rows : (int) Math.ceil((double) perPage / cols);
             PdfPTable table = new PdfPTable(cols);
-            float tableWidth = pageRect.getWidth() - marginLeft - marginRight;
+            float maxTableWidth = pageRect.getWidth() - marginLeft - marginRight;
+            float desiredTableWidth = (labelWidth > 0 && columns > 0) ? (labelWidth * cols) : maxTableWidth;
+            float tableWidth = Math.min(desiredTableWidth, maxTableWidth);
             table.setTotalWidth(tableWidth);
             table.setLockedWidth(true);
             table.setWidthPercentage(100f);
@@ -144,11 +153,22 @@ public class Medico_Ausfall_BarcodeGenerator {
             table.getDefaultCell().setBorder(Rectangle.NO_BORDER);
 
             float cellWidth = tableWidth / cols;
+            float cellFixedHeight = labelHeight > 0 ? labelHeight : 54f;
             float barcodeDisplayWidth = cellWidth - 8;
-            float barcodeDisplayHeight = 36;
-            float cellFixedHeight = barcodeDisplayHeight + 18;
+            float textHeightReserve = 20f;
+            // shrink barcode height by about 1 cm (~28 pt)
+            float barcodeDisplayHeight = Math.max(16f, cellFixedHeight - textHeightReserve - 28f);
 
-            Font numberFont = new Font(Font.FontFamily.HELVETICA, 9, Font.NORMAL);
+            Font nameFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
+            Font infoFont = new Font(Font.FontFamily.HELVETICA, 8, Font.NORMAL);
+
+            String nameLine = personFolderName;
+            String birthDate = "";
+            int lastSpace = personFolderName.lastIndexOf(' ');
+            if (lastSpace > 0 && lastSpace + 1 < personFolderName.length()) {
+                birthDate = personFolderName.substring(lastSpace + 1);
+                nameLine = personFolderName.substring(0, lastSpace);
+            }
 
             for (int i = 0; i < perPage; i++) {
                 BufferedImage barcodeImage = generateBarcode(number, type, width, height);
@@ -162,13 +182,31 @@ public class Medico_Ausfall_BarcodeGenerator {
                 cell.setHorizontalAlignment(Element.ALIGN_CENTER);
                 cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
                 cell.addElement(img);
-                Paragraph numPara = new Paragraph(number, numberFont);
-                numPara.setAlignment(Element.ALIGN_CENTER);
-                numPara.setSpacingBefore(2);
-                cell.addElement(numPara);
+
+                StringBuilder firstLine = new StringBuilder();
+                firstLine.append("").append(nameLine);
+                if (!birthDate.isEmpty()) {
+                    firstLine.append("  Geb.: ").append(birthDate);
+                }
+
+                Paragraph namePara = new Paragraph(firstLine.toString(), nameFont);
+                namePara.setAlignment(Element.ALIGN_CENTER);
+                namePara.setSpacingBefore(2);
+                cell.addElement(namePara);
+
+                StringBuilder secondLine = new StringBuilder();
+                secondLine.append("Fall: ").append(number);
+                if (stationName != null && !stationName.isEmpty()) {
+                    secondLine.append(" - Station: ").append(stationName);
+                }
+
+                Paragraph infoPara = new Paragraph(secondLine.toString(), infoFont);
+                infoPara.setAlignment(Element.ALIGN_CENTER);
+                infoPara.setSpacingBefore(1);
+                cell.addElement(infoPara);
                 table.addCell(cell);
             }
-            int remainder = (cols * rows) - perPage;
+            int remainder = (cols * effectiveRows) - perPage;
             for (int i = 0; i < remainder; i++) {
                 PdfPCell empty = new PdfPCell();
                 empty.setBorder(Rectangle.NO_BORDER);

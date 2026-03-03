@@ -4,10 +4,14 @@
   "barcodeWidth": 200,
   "barcodeHeight": 50,
   "pageSize": "A4",
-  "barcodesPerPage": 24,
+  "barcodesPerPage": 10,
+  "columns": 2,
+  "rows": 5,
   "marginLeft": 20,
   "marginTop": 20,
   "marginRight": 20,
   "marginBottom": 20,
+  "labelWidth": 255,
+  "labelHeight": 156,
   "barcodeOutputFilename": "Barcodes.pdf"
 }
