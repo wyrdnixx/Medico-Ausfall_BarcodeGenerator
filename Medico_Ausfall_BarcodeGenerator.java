@@ -164,10 +164,17 @@ public class Medico_Ausfall_BarcodeGenerator {
 
             String nameLine = personFolderName;
             String birthDate = "";
-            int lastSpace = personFolderName.lastIndexOf(' ');
-            if (lastSpace > 0 && lastSpace + 1 < personFolderName.length()) {
-                birthDate = personFolderName.substring(lastSpace + 1);
-                nameLine = personFolderName.substring(0, lastSpace);
+            // Try to detect birth date pattern (dd.MM.yyyy) at the end of the folder name,
+            // e.g. "Müller, Annete 31.03.1955" or "Ben Fredj,Mariam-14.10.1999".
+            Pattern birthPattern = Pattern.compile("(\\d{2}\\.\\d{2}\\.\\d{4})");
+            Matcher birthMatcher = birthPattern.matcher(personFolderName);
+            int birthStart = -1;
+            while (birthMatcher.find()) {
+                birthStart = birthMatcher.start();
+                birthDate = birthMatcher.group(1);
+            }
+            if (birthStart >= 0) {
+                nameLine = personFolderName.substring(0, birthStart).replaceAll("[\\s-]+$", "");
             }
 
             for (int i = 0; i < perPage; i++) {
