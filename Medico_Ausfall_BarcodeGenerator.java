@@ -18,6 +18,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.StandardOpenOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,6 +34,7 @@ public class Medico_Ausfall_BarcodeGenerator {
     private static final Pattern BIRTH_DATE_PATTERN = Pattern.compile("(\\d{2}\\.\\d{2}\\.\\d{4})");
 
     public static void main(String[] args) {
+        String errorLogPath = "";
         try {
             String configPath = "config.json";
             if (args.length > 0) {
@@ -70,6 +74,7 @@ public class Medico_Ausfall_BarcodeGenerator {
             boolean nameFontBold = config.optBoolean("nameFontBold", true);
             float infoFontSize = (float) config.optDouble("infoFontSize", 8);
             boolean infoFontBold = config.optBoolean("infoFontBold", false);
+            errorLogPath = config.optString("errorLogPath", "");
 
             // Validate critical numeric config values
             if (width <= 0)        throw new IllegalArgumentException("barcodeWidth must be > 0");
@@ -107,7 +112,9 @@ public class Medico_Ausfall_BarcodeGenerator {
                             labelWidth, labelHeight, nameFontSize, nameFontBold, infoFontSize, infoFontBold, outputPdf);
                     successCount++;
                 } catch (Exception ex) {
+                    String errMsg = "Patient " + personId + " (" + outputPdf.getFileName() + "): " + ex.getMessage();
                     System.err.println("  ERROR: " + ex.getMessage());
+                    appendToErrorLog(errorLogPath, errMsg);
                     errorCount++;
                 }
             }
@@ -115,7 +122,10 @@ public class Medico_Ausfall_BarcodeGenerator {
                     + (errorCount > 0 ? " " + errorCount + " error(s)." : ""));
             if (errorCount > 0) System.exit(1);
         } catch (Exception e) {
+            String errMsg = "FATAL: " + (e.getMessage() != null ? e.getMessage() : e.toString());
+            System.err.println(errMsg);
             e.printStackTrace();
+            appendToErrorLog(errorLogPath, errMsg);
             System.exit(1);
         }
     }
@@ -282,6 +292,22 @@ public class Medico_Ausfall_BarcodeGenerator {
             if (!success) {
                 Files.deleteIfExists(outputPath);
             }
+        }
+    }
+
+    /**
+     * Appends a timestamped error message to the configured log file.
+     * Does nothing if logPath is empty. Prints a warning to stderr if the file cannot be written.
+     */
+    private static void appendToErrorLog(String logPath, String message) {
+        if (logPath == null || logPath.isEmpty()) return;
+        try {
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            String line = "[" + timestamp + "] " + message + System.lineSeparator();
+            Files.writeString(Paths.get(logPath), line, StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (IOException ex) {
+            System.err.println("Warning: could not write to error log '" + logPath + "': " + ex.getMessage());
         }
     }
 

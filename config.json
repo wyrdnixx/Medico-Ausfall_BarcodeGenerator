@@ -17,5 +17,6 @@
   "nameFontSize": 8,
   "nameFontBold": true,
   "infoFontSize": 8,
-  "infoFontBold": false
+  "infoFontBold": false,
+  "errorLogPath": "errors.log"
 }

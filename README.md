@@ -70,7 +70,8 @@ Alle Einstellungen werden in der `config.json` im Projektverzeichnis vorgenommen
   "nameFontSize": 8,
   "nameFontBold": true,
   "infoFontSize": 8,
-  "infoFontBold": false
+  "infoFontBold": false,
+  "errorLogPath": "errors.log"
 }
 ```
 
@@ -95,6 +96,7 @@ Alle Einstellungen werden in der `config.json` im Projektverzeichnis vorgenommen
 | `nameFontBold` | Fettschrift für Name und Geburtsdatum (`true`/`false`) |
 | `infoFontSize` | Schriftgröße für Fallnummer und Station |
 | `infoFontBold` | Fettschrift für Fallnummer und Station (`true`/`false`) |
+| `errorLogPath` | Pfad zur Fehler-Log-Datei (relativ oder absolut). Fehler werden mit Zeitstempel angehängt. Leer lassen um Logging zu deaktivieren. |
 
 > **Tipp:** Umrechnung mm → Punkte: `mm × (72 / 25,4)`
 > Beispiel: 52,5 mm × 2,8346 = **148,82 pt**
