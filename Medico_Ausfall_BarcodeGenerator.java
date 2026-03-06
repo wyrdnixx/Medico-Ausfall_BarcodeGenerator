@@ -24,13 +24,16 @@ public class Medico_Ausfall_BarcodeGenerator {
     /** Pattern: segment that is only digits, 6–12 chars (person ID in filenames). */
     private static final Pattern PERSON_ID_PATTERN = Pattern.compile("-([0-9]{6,12})(?:-|$)");
 
+    /** Pattern: birth date in format dd.MM.yyyy */
+    private static final Pattern BIRTH_DATE_PATTERN = Pattern.compile("(\\d{2}\\.\\d{2}\\.\\d{4})");
+
     public static void main(String[] args) {
         try {
             String configPath = "config.json";
             if (args.length > 0) {
                 configPath = args[0];
             }
-            JSONObject config = new JSONObject(readFile(configPath));
+            JSONObject config = new JSONObject(Files.readString(Paths.get(configPath), StandardCharsets.UTF_8));
 
             String offlinedokuPathStr = config.optString("offlinedokuPath", "");
             if (offlinedokuPathStr.isEmpty()) {
@@ -60,6 +63,10 @@ public class Medico_Ausfall_BarcodeGenerator {
             float labelWidth = (float) config.optDouble("labelWidth", 0);
             float labelHeight = (float) config.optDouble("labelHeight", 0);
             String barcodeOutputFilename = config.optString("barcodeOutputFilename", "Barcodes.pdf");
+            float nameFontSize = (float) config.optDouble("nameFontSize", 9);
+            boolean nameFontBold = config.optBoolean("nameFontBold", true);
+            float infoFontSize = (float) config.optDouble("infoFontSize", 8);
+            boolean infoFontBold = config.optBoolean("infoFontBold", false);
 
             Map<Path, String> folderToPersonId = scanPdfFolders(basePath);
             if (folderToPersonId.isEmpty()) {
@@ -74,13 +81,15 @@ public class Medico_Ausfall_BarcodeGenerator {
                 String stationName = "";
                 Path parent = folder.getParent();
                 if (parent != null && parent.getFileName() != null) {
-                    stationName = parent.getFileName().toString();
+                    // Strip parenthetical suffix, e.g. "F-12 (Pflegegruppe 12)" → "F-12"
+                    stationName = parent.getFileName().toString()
+                            .replaceAll("\\s*\\(.*\\)\\s*$", "").trim();
                 }
                 Path outputPdf = folder.resolve(barcodeOutputFilename);
                 System.out.println("Generating " + outputPdf + " (" + personId + ", " + perPage + " barcodes)");
                 generateBarcodePDF(personFolderName, stationName, personId, barcodeType, width, height, pageSize,
                         perPage, columns, rows, marginLeft, marginTop, marginRight, marginBottom,
-                        labelWidth, labelHeight, outputPdf);
+                        labelWidth, labelHeight, nameFontSize, nameFontBold, infoFontSize, infoFontBold, outputPdf);
             }
             System.out.println("Done. Generated " + folderToPersonId.size() + " Barcodes.pdf file(s).");
         } catch (Exception e) {
@@ -129,12 +138,19 @@ public class Medico_Ausfall_BarcodeGenerator {
     private static void generateBarcodePDF(String personFolderName, String stationName, String number, String type,
             int width, int height, String pageSize, int perPage, int columns, int rows,
             float marginLeft, float marginTop, float marginRight, float marginBottom,
-            float labelWidth, float labelHeight, Path outputPath) throws Exception {
+            float labelWidth, float labelHeight,
+            float nameFontSize, boolean nameFontBold, float infoFontSize, boolean infoFontBold,
+            Path outputPath) throws Exception {
+        // Validate barcodeType and generate bytes before opening the document,
+        // so invalid config causes a clean error without iText interference.
+        byte[] barcodeBytes = generateBarcodeBytes(number, type, width, height);
+
         Rectangle pageRect = PageSize.getRectangle(pageSize);
         Document document = new Document(pageRect, marginLeft, marginRight, marginTop, marginBottom);
         try (OutputStream out = Files.newOutputStream(outputPath)) {
             PdfWriter.getInstance(document, out);
             document.open();
+            try {
 
             int cols = columns > 0 ? columns : (int) Math.ceil(Math.sqrt(perPage));
             int effectiveRows = rows > 0 ? rows : (int) Math.ceil((double) perPage / cols);
@@ -144,7 +160,6 @@ public class Medico_Ausfall_BarcodeGenerator {
             float tableWidth = Math.min(desiredTableWidth, maxTableWidth);
             table.setTotalWidth(tableWidth);
             table.setLockedWidth(true);
-            table.setWidthPercentage(100f);
             float[] colWidths = new float[cols];
             for (int i = 0; i < cols; i++) colWidths[i] = 1f;
             table.setWidths(colWidths);
@@ -154,20 +169,19 @@ public class Medico_Ausfall_BarcodeGenerator {
 
             float cellWidth = tableWidth / cols;
             float cellFixedHeight = labelHeight > 0 ? labelHeight : 54f;
-            float barcodeDisplayWidth = cellWidth - 8;
-            float textHeightReserve = 20f;
-            // shrink barcode height by about 1 cm (~28 pt)
-            float barcodeDisplayHeight = Math.max(16f, cellFixedHeight - textHeightReserve - 28f);
+            float barcodeDisplayWidth = cellWidth - 4;
+            // PDF display height is taken directly from barcodeHeight in config.json (in points)
+            float barcodeDisplayHeight = (float) height;
 
-            Font nameFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
-            Font infoFont = new Font(Font.FontFamily.HELVETICA, 8, Font.NORMAL);
+            Font nameFont = new Font(Font.FontFamily.HELVETICA, nameFontSize, nameFontBold ? Font.BOLD : Font.NORMAL);
+            Font infoFont = new Font(Font.FontFamily.HELVETICA, infoFontSize, infoFontBold ? Font.BOLD : Font.NORMAL);
 
-            String nameLine = personFolderName;
-            String birthDate = "";
+            // Extract name and birth date from folder name once before the loop.
             // Try to detect birth date pattern (dd.MM.yyyy) at the end of the folder name,
             // e.g. "Müller, Annete 31.03.1955" or "Ben Fredj,Mariam-14.10.1999".
-            Pattern birthPattern = Pattern.compile("(\\d{2}\\.\\d{2}\\.\\d{4})");
-            Matcher birthMatcher = birthPattern.matcher(personFolderName);
+            String nameLine = personFolderName;
+            String birthDate = "";
+            Matcher birthMatcher = BIRTH_DATE_PATTERN.matcher(personFolderName);
             int birthStart = -1;
             while (birthMatcher.find()) {
                 birthStart = birthMatcher.start();
@@ -177,43 +191,36 @@ public class Medico_Ausfall_BarcodeGenerator {
                 nameLine = personFolderName.substring(0, birthStart).replaceAll("[\\s-]+$", "");
             }
 
+            // Build label text lines once for all cells
+            String firstLine = nameLine + (birthDate.isEmpty() ? "" : " " + birthDate);
+            String secondLine = number + (stationName.isEmpty() ? "" : " - " + stationName);
+
             for (int i = 0; i < perPage; i++) {
-                BufferedImage barcodeImage = generateBarcode(number, type, width, height);
-                Image img = imageFromBufferedImage(barcodeImage);
+                Image img = Image.getInstance(barcodeBytes);
                 img.scaleAbsolute(barcodeDisplayWidth, barcodeDisplayHeight);
-                img.setAlignment(Element.ALIGN_CENTER);
                 PdfPCell cell = new PdfPCell();
                 cell.setBorder(Rectangle.NO_BORDER);
-                cell.setPadding(4);
+                cell.setPaddingLeft(2);
+                cell.setPaddingRight(2);
+                cell.setPaddingTop(2);
+                cell.setPaddingBottom(1);
                 cell.setFixedHeight(cellFixedHeight);
                 cell.setHorizontalAlignment(Element.ALIGN_CENTER);
                 cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
                 cell.addElement(img);
 
-                StringBuilder firstLine = new StringBuilder();
-                firstLine.append("").append(nameLine);
-                if (!birthDate.isEmpty()) {
-                    firstLine.append("  Geb.: ").append(birthDate);
-                }
-
-                Paragraph namePara = new Paragraph(firstLine.toString(), nameFont);
+                Paragraph namePara = new Paragraph(firstLine, nameFont);
                 namePara.setAlignment(Element.ALIGN_CENTER);
-                namePara.setSpacingBefore(2);
+                namePara.setSpacingBefore(1);
                 cell.addElement(namePara);
 
-                StringBuilder secondLine = new StringBuilder();
-                secondLine.append("").append(number);
-                if (stationName != null && !stationName.isEmpty()) {
-                    secondLine.append(" - ").append(stationName);
-                }
-
-                Paragraph infoPara = new Paragraph(secondLine.toString(), infoFont);
+                Paragraph infoPara = new Paragraph(secondLine, infoFont);
                 infoPara.setAlignment(Element.ALIGN_CENTER);
-                infoPara.setSpacingBefore(1);
+                infoPara.setSpacingBefore(0);
                 cell.addElement(infoPara);
                 table.addCell(cell);
             }
-            int remainder = (cols * effectiveRows) - perPage;
+            int remainder = Math.max(0, (cols * effectiveRows) - perPage);
             for (int i = 0; i < remainder; i++) {
                 PdfPCell empty = new PdfPCell();
                 empty.setBorder(Rectangle.NO_BORDER);
@@ -223,29 +230,26 @@ public class Medico_Ausfall_BarcodeGenerator {
             }
 
             document.add(table);
-            document.close();
+            } finally {
+                document.close();
+            }
         }
     }
 
-    private static Image imageFromBufferedImage(BufferedImage bufferedImage) throws IOException, BadElementException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(bufferedImage, "PNG", baos);
-        return Image.getInstance(baos.toByteArray());
-    }
-
-    private static BufferedImage generateBarcode(String data, String type, int width, int height) throws WriterException {
+    /** Generates a barcode as PNG bytes. Throws IllegalArgumentException for unknown barcodeType. */
+    private static byte[] generateBarcodeBytes(String data, String type, int width, int height) throws WriterException, IOException {
         BarcodeFormat format;
         try {
             format = BarcodeFormat.valueOf(type);
         } catch (IllegalArgumentException e) {
-            format = BarcodeFormat.CODE_128;
+            throw new IllegalArgumentException(
+                "Invalid barcodeType in config.json: '" + type + "'. Valid values are e.g. CODE_128, QR_CODE, EAN_13.");
         }
         MultiFormatWriter writer = new MultiFormatWriter();
         BitMatrix bitMatrix = writer.encode(data, format, width, height);
-        return MatrixToImageWriter.toBufferedImage(bitMatrix);
-    }
-
-    private static String readFile(String path) throws IOException {
-        return new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
+        BufferedImage bufferedImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(bufferedImage, "PNG", baos);
+        return baos.toByteArray();
     }
 }
