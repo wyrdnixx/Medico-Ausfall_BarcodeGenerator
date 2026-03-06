@@ -1,7 +1,7 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
-JAVA_EXE="./jdk-25.0.2+10/bin/java"
+JAVA_EXE="./jdk-25.0.2_linux/bin/java"
 CP=".:lib/*"
 
 if [[ ! -x "$JAVA_EXE" ]]; then
