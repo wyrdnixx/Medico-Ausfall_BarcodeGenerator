@@ -204,7 +204,7 @@ public class Medico_Ausfall_BarcodeGenerator {
                 StringBuilder secondLine = new StringBuilder();
                 secondLine.append("Fall: ").append(number);
                 if (stationName != null && !stationName.isEmpty()) {
-                    secondLine.append(" - Station: ").append(stationName);
+                    secondLine.append(" - ").append(stationName);
                 }
 
                 Paragraph infoPara = new Paragraph(secondLine.toString(), infoFont);
