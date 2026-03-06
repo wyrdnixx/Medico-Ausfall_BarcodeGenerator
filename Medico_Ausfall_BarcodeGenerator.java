@@ -202,7 +202,7 @@ public class Medico_Ausfall_BarcodeGenerator {
                 cell.addElement(namePara);
 
                 StringBuilder secondLine = new StringBuilder();
-                secondLine.append("Fall: ").append(number);
+                secondLine.append("").append(number);
                 if (stationName != null && !stationName.isEmpty()) {
                     secondLine.append(" - ").append(stationName);
                 }
