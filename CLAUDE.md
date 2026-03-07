@@ -14,14 +14,13 @@
 │   └── OFFLINEDOKU
 │       ├── 0
 │       │   ├── F-10 (Pflegegruppe 10)
-│       │   │   └── Mueller,Hans 01.09.1999
+│       │   │   └── Mustermann,Max 01.09.1999
 │       │   │       ├── Barcodes.pdf
-│       │   │       ├── Mueller, Hans -07.04.2011-250066138-Allgemeine BLA-OFFLINECOMMONDATA.pdf
-│       │   │       └── Mueller, Hans -07.04.2011-250066138-Allgemeine Patientendaten-OFFLINECOMMONDATA.pdf
+│       │   │       └── Mustermann, Max -07.04.2011-250066138-Allgemeine Patientendaten-OFFLINECOMMONDATA.pdf
 │       │   └── F-12 (Pflegegruppe 12)
-│       │       └── Gruber Müller, Annete-31.03.1955
-│       │           ├── Annete, Müller-Gruber-07.04.2011-250066139-Allgemeine BLA-OFFLINECOMMONDATA.pdf
-│       │           ├── Annete, Müller-Gruber-07.04.2011-250066139-Allgemeine Patientendaten-OFFLINECOMMONDATA.pdf
+│       │       └── Musterfrau, Susi-31.03.1955
+│       │           ├── Susi, Musterfrau-07.04.2011-250012345-Allgemeine BLA-OFFLINECOMMONDATA.pdf
+
 │       │           └── Barcodes.pdf
 │       └── 2
 │           └── T-1

@@ -118,8 +118,8 @@ Jedes Etikett enthält:
 files/OFFLINEDOKU/
 └── 0/
     └── F-10 (Pflegegruppe 10)/
-        └── Mueller,Hans 01.09.1999/
-            ├── Mueller, Hans-07.04.2011-250066138-...-OFFLINECOMMONDATA.pdf
+        └── Mustermann,Max 01.09.1999/
+            ├── Mustermann, Max-07.04.2011-250066138-...-OFFLINECOMMONDATA.pdf
             └── Barcodes.pdf   ← wird erzeugt
 ```
 
