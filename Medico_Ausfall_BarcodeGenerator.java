@@ -56,6 +56,8 @@ public class Medico_Ausfall_BarcodeGenerator {
             String barcodeType = config.optString("barcodeType", "CODE_128");
             int width = config.optInt("barcodeWidth", 200);
             int height = config.optInt("barcodeHeight", 50);
+            // Separate PDF-Anzeigehöhe (Punkte), Fallback auf barcodeHeight wenn nicht gesetzt
+            float barcodeDisplayHeight = (float) config.optDouble("barcodeDisplayHeight", height);
             String pageSize = config.optString("pageSize", "A4");
             int perPage = config.optInt("barcodesPerPage", 8);
             int columns = config.optInt("columns", 0);
@@ -77,8 +79,9 @@ public class Medico_Ausfall_BarcodeGenerator {
             errorLogPath = config.optString("errorLogPath", "");
 
             // Validate critical numeric config values
-            if (width <= 0)        throw new IllegalArgumentException("barcodeWidth must be > 0");
-            if (height <= 0)       throw new IllegalArgumentException("barcodeHeight must be > 0");
+            if (width <= 0)               throw new IllegalArgumentException("barcodeWidth must be > 0");
+            if (height <= 0)              throw new IllegalArgumentException("barcodeHeight must be > 0");
+            if (barcodeDisplayHeight <= 0) throw new IllegalArgumentException("barcodeDisplayHeight must be > 0");
             if (perPage <= 0)      throw new IllegalArgumentException("barcodesPerPage must be > 0");
             if (columns < 0)       throw new IllegalArgumentException("columns must be >= 0");
             if (rows < 0)          throw new IllegalArgumentException("rows must be >= 0");
@@ -107,8 +110,9 @@ public class Medico_Ausfall_BarcodeGenerator {
                 Path outputPdf = folder.resolve(barcodeOutputFilename);
                 System.out.println("Generating " + outputPdf + " (" + personId + ", " + perPage + " barcodes)");
                 try {
-                    generateBarcodePDF(personFolderName, stationName, personId, barcodeType, width, height, pageSize,
-                            perPage, columns, rows, marginLeft, marginTop, marginRight, marginBottom,
+                    generateBarcodePDF(personFolderName, stationName, personId, barcodeType, width, height,
+                            barcodeDisplayHeight, pageSize, perPage, columns, rows,
+                            marginLeft, marginTop, marginRight, marginBottom,
                             labelWidth, labelHeight, nameFontSize, nameFontBold, infoFontSize, infoFontBold, outputPdf);
                     successCount++;
                 } catch (Exception ex) {
@@ -184,7 +188,7 @@ public class Medico_Ausfall_BarcodeGenerator {
     }
 
     private static void generateBarcodePDF(String personFolderName, String stationName, String number, String type,
-            int width, int height, String pageSize, int perPage, int columns, int rows,
+            int width, int height, float barcodeDisplayHeight, String pageSize, int perPage, int columns, int rows,
             float marginLeft, float marginTop, float marginRight, float marginBottom,
             float labelWidth, float labelHeight,
             float nameFontSize, boolean nameFontBold, float infoFontSize, boolean infoFontBold,
@@ -222,9 +226,9 @@ public class Medico_Ausfall_BarcodeGenerator {
 
                 float cellWidth = tableWidth / cols;
                 float cellFixedHeight = labelHeight > 0 ? labelHeight : 54f;
-                float barcodeDisplayWidth = cellWidth - 4;
-                // PDF display height is taken directly from barcodeHeight in config.json (in points)
-                float barcodeDisplayHeight = (float) height;
+                // 2pt links + 2pt rechts Padding (siehe setPaddingLeft/Right unten)
+                float cellHorizontalPadding = 4;
+                float barcodeDisplayWidth = cellWidth - cellHorizontalPadding;
 
                 Font nameFont = new Font(Font.FontFamily.HELVETICA, nameFontSize, nameFontBold ? Font.BOLD : Font.NORMAL);
                 Font infoFont = new Font(Font.FontFamily.HELVETICA, infoFontSize, infoFontBold ? Font.BOLD : Font.NORMAL);
@@ -250,7 +254,8 @@ public class Medico_Ausfall_BarcodeGenerator {
 
                 for (int i = 0; i < perPage; i++) {
                     Image img = Image.getInstance(barcodeBytes);
-                    img.scaleAbsolute(barcodeDisplayWidth, barcodeDisplayHeight);
+                    // scaleToFit preserviert das Seitenverhältnis, verhindert verzerrte Balken
+                    img.scaleToFit(barcodeDisplayWidth, barcodeDisplayHeight);
                     PdfPCell cell = new PdfPCell();
                     cell.setBorder(Rectangle.NO_BORDER);
                     cell.setPaddingLeft(2);
@@ -278,7 +283,6 @@ public class Medico_Ausfall_BarcodeGenerator {
                     PdfPCell empty = new PdfPCell();
                     empty.setBorder(Rectangle.NO_BORDER);
                     empty.setFixedHeight(cellFixedHeight);
-                    empty.setMinimumHeight(1);
                     table.addCell(empty);
                 }
 

@@ -3,6 +3,7 @@
   "barcodeType": "CODE_128",
   "barcodeWidth": 180,
   "barcodeHeight": 40,
+  "barcodeDisplayHeight": 40,
   "pageSize": "A4",
   "barcodesPerPage": 40,
   "columns": 4,
