@@ -56,6 +56,7 @@ Alle Einstellungen werden in der `config.json` im Projektverzeichnis vorgenommen
   "barcodeType": "CODE_128",
   "barcodeWidth": 180,
   "barcodeHeight": 40,
+  "barcodeDisplayHeight": 40,
   "pageSize": "A4",
   "barcodesPerPage": 40,
   "columns": 4,
@@ -79,8 +80,9 @@ Alle Einstellungen werden in der `config.json` im Projektverzeichnis vorgenommen
 |-----------|-------------|
 | `offlinedokuPath` | Pfad zum Wurzelverzeichnis der OfflineDoku-Ordnerstruktur |
 | `barcodeType` | Barcode-Format, z.B. `CODE_128`, `QR_CODE`, `EAN_13` |
-| `barcodeWidth` | Breite des Barcodes in Pixeln (für die interne Generierung) |
-| `barcodeHeight` | Höhe des Barcodes im PDF in Punkten (1 pt ≈ 0,35 mm) |
+| `barcodeWidth` | Breite des Barcodes in Pixeln (für die interne ZXing-Generierung) |
+| `barcodeHeight` | Pixelhöhe bei der internen ZXing-Generierung (beeinflusst Qualität) |
+| `barcodeDisplayHeight` | Anzeigehöhe des Barcodes im PDF in Punkten (1 pt ≈ 0,35 mm). Optional — Fallback auf `barcodeHeight` wenn nicht gesetzt. |
 | `pageSize` | Seitengröße des PDFs, z.B. `A4` |
 | `barcodesPerPage` | Anzahl der Etiketten pro Seite (wird durch `columns × rows` überschrieben) |
 | `columns` | Anzahl der Spalten pro Seite |
